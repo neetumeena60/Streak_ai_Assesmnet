@@ -1,1 +1,71 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+)
+
+type RequestBody struct {
+	Numbers []int `json:"numbers"` 
+	Target  int   `json:"target"`
+}
+
+type ResponseBody struct {
+	Solution [][]int `json:"solution"` 
+}
+
+func findPairs(numbers []int, target int) [][]int {
+	var pairs [][]int
+	numDict := make(map[int]int)
+
+	for i, num := range numbers {
+		diff := target - num
+		if index, found := numDict[diff]; found {
+			pairs = append(pairs, []int{index, i})
+		}
+		numDict[num] = i
+	}
+	return pairs
+}
+
+func findPairsHandler(w http.ResponseWriter, r *http.Request) {
+	
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var reqBody RequestBody
+	err := json.NewDecoder(r.Body).Decode(&reqBody)
+	if err != nil || reqBody.Numbers == nil {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
+		return
+	}
+
+	if len(reqBody.Numbers) == 0 {
+		http.Error(w, "'numbers' must be a non-empty array", http.StatusBadRequest)
+		return
+	}
+
+
+	solution := findPairs(reqBody.Numbers, reqBody.Target)
+
+	
+	respBody := ResponseBody{
+		Solution: solution,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(respBody)
+}
+
+func main() {
+	
+	http.HandleFunc("/find-pairs", findPairsHandler)
+
+	
+	fmt.Println("Server running on http://localhost:5000")
+	http.ListenAndServe(":5000", nil)
+}
 
